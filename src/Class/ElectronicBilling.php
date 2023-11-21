@@ -109,12 +109,14 @@ class ElectronicBilling extends AfipWebService {
 		$req = array(
 			'FeCAEReq' => array(
 				'FeCabReq' => array(
-					'CantReg' 	=> $data['CbteHasta']-$data['CbteDesde']+1,
+//					'CantReg' 	=> $data['CbteHasta']-$data['CbteDesde']+1,
+                    'CantReg' 	=> $data['CantReg'],
 					'PtoVta' 	=> $data['PtoVta'],
 					'CbteTipo' 	=> $data['CbteTipo']
 					),
 				'FeDetReq' => array( 
-					'FECAEDetRequest' => &$data
+//					'FECAEDetRequest' => &$data
+                    'FECAEDetRequest' => $data['Comprobantes']
 				)
 			)
 		);
@@ -123,14 +125,16 @@ class ElectronicBilling extends AfipWebService {
 		unset($data['PtoVta']);
 		unset($data['CbteTipo']);
 
-		if (isset($data['Tributos'])) 
-			$data['Tributos'] = array('Tributo' => $data['Tributos']);
+        foreach ($data['Comprobantes'] as $key => $comprobante) {
+            if (isset($comprobante['Tributos']))
+                $data['Comprobantes'][$key]['Tributos'] = array('Tributo' => $comprobante['Tributos']);
 
-		if (isset($data['Iva'])) 
-			$data['Iva'] = array('AlicIva' => $data['Iva']);
+            if (isset($comprobante['Iva']))
+                $data['Comprobantes'][$key]['Iva'] = array('AlicIva' => $comprobante['Iva']);
 
-		if (isset($data['Opcionales'])) 
-			$data['Opcionales'] = array('Opcional' => $data['Opcionales']);
+            if (isset($comprobante['Opcionales']))
+                $data['Comprobantes'][$key]['Opcionales'] = array('Opcional' => $comprobante['Opcionales']);
+        }
 
 		$results = $this->ExecuteRequest('FECAESolicitar', $req);
 
@@ -263,6 +267,18 @@ class ElectronicBilling extends AfipWebService {
 	{
 		return $this->ExecuteRequest('FEParamGetPtosVenta')->ResultGet->PtoVenta;
 	}
+
+
+    /**
+     *  Asks to AFIP Servers for lot limit available {@see WS
+     *  Specification item 4.11}
+     *
+     * @return int
+     */
+    public function GetBulkLimit(): int
+    {
+        return $this->ExecuteRequest('FECompTotXRequest')->RegXReq;
+    }
 
 	/**
 	 * Asks to AFIP Servers for voucher types availables {@see WS 
