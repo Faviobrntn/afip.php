@@ -1,7 +1,7 @@
 <?php
 /**
  * SDK for AFIP Electronic Billing (wsfe1)
- * 
+ *
  * @link http://www.afip.gob.ar/fe/documentos/manual_desarrollador_COMPG_v2_10.pdf WS Specification
  *
  * @author 	Afip SDK
@@ -17,8 +17,8 @@ class ElectronicBilling extends AfipWebService {
 	var $URL_TEST 		= 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx';
 
 	/**
-	 * Create PDF 
-	 * 
+	 * Create PDF
+	 *
 	 * Send a request to Afip SDK server to create a PDF
 	 *
 	 * @param array $data Data for PDF creation
@@ -61,18 +61,18 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Gets last voucher number 
-	 * 
+	 * Gets last voucher number
+	 *
 	 * Asks to Afip servers for number of the last voucher created for
-	 * certain sales point and voucher type {@see WS Specification 
-	 * item 4.15} 
+	 * certain sales point and voucher type {@see WS Specification
+	 * item 4.15}
 	 *
 	 * @since 0.7
 	 *
-	 * @param int $sales_point 	Sales point to ask for last voucher  
-	 * @param int $type 		Voucher type to ask for last voucher 
+	 * @param int $sales_point 	Sales point to ask for last voucher
+	 * @param int $type 		Voucher type to ask for last voucher
 	 *
-	 * @return int 
+	 * @return int
 	 **/
 	public function GetLastVoucher($sales_point, $type)
 	{
@@ -87,21 +87,21 @@ class ElectronicBilling extends AfipWebService {
 	/**
 	 * Create a voucher from AFIP
 	 *
-	 * Send to AFIP servers request for create a voucher and assign 
+	 * Send to AFIP servers request for create a voucher and assign
 	 * CAE to them {@see WS Specification item 4.1}
-	 * 
+	 *
 	 * @since 0.7
 	 *
-	 * @param array $data Voucher parameters {@see WS Specification 
-	 * 	item 4.1.3}, some arrays were simplified for easy use {@example 
+	 * @param array $data Voucher parameters {@see WS Specification
+	 * 	item 4.1.3}, some arrays were simplified for easy use {@example
 	 * 	examples/CreateVoucher.php Example with all allowed
 	 * 	 attributes}
-	 * @param bool $return_response if is TRUE returns complete response  
+	 * @param bool $return_response if is TRUE returns complete response
 	 * 	from AFIP
-	 * 
-	 * @return array if $return_response is set to FALSE returns 
-	 * 	[CAE => CAE assigned to voucher, CAEFchVto => Expiration date 
-	 * 	for CAE (yyyy-mm-dd)] else returns complete response from 
+	 *
+	 * @return array if $return_response is set to FALSE returns
+	 * 	[CAE => CAE assigned to voucher, CAEFchVto => Expiration date
+	 * 	for CAE (yyyy-mm-dd)] else returns complete response from
 	 * 	AFIP {@see WS Specification item 4.1.3}
 	**/
 	public function CreateVoucher($data, $return_response = FALSE)
@@ -114,9 +114,9 @@ class ElectronicBilling extends AfipWebService {
 					'PtoVta' 	=> $data['PtoVta'],
 					'CbteTipo' 	=> $data['CbteTipo']
 					),
-				'FeDetReq' => array( 
+				'FeDetReq' => array(
 //					'FECAEDetRequest' => &$data
-                    'FECAEDetRequest' => $data['Comprobantes']
+                    'FECAEDetRequest' => &$data['Comprobantes']
 				)
 			)
 		);
@@ -142,10 +142,24 @@ class ElectronicBilling extends AfipWebService {
 			return $results;
 		}
 		else{
-			return array(
-				'CAE' 		=> $results->FeDetResp->FECAEDetResponse->CAE,
-				'CAEFchVto' => $this->FormatDate($results->FeDetResp->FECAEDetResponse->CAEFchVto),
-			);
+            $resp = [];
+            if (is_array($results->FeDetResp->FECAEDetResponse)){
+                foreach ($results->FeDetResp->FECAEDetResponse as $cte) {
+                    $resp[] = [
+                        'Nro' 		=> $cte->CbteDesde,
+                        'CAE' 		=> $cte->CAE,
+                        'CAEFchVto' => $this->FormatDate($cte->CAEFchVto),
+                    ];
+                }
+
+            }else{
+                $resp = array(
+                    'Nro' 		=> $results->FeDetResp->FECAEDetResponse->CbteDesde,
+                    'CAE' 		=> $results->FeDetResp->FECAEDetResponse->CAE,
+                    'CAEFchVto' => $this->FormatDate($results->FeDetResp->FECAEDetResponse->CAEFchVto),
+                );
+            }
+			return $resp;
 		}
 	}
 
@@ -159,25 +173,25 @@ class ElectronicBilling extends AfipWebService {
 	 *
 	 * @param array $data Same to $data in Afip::CreateVoucher except that
 	 * 	don't need CbteDesde and CbteHasta attributes
-	 * 
-	 * @param bool $return_response if is TRUE returns complete response  
+	 *
+	 * @param bool $return_response if is TRUE returns complete response
 	 * 	from AFIP
 	 *
-	 * @return array if $return_response is set to false returns 
-	 * [CAE => CAE assigned to voucher, CAEFchVto => Expiration 
-	 * 	date for CAE (yyyy-mm-dd), voucher_number => Number assigned to 
+	 * @return array if $return_response is set to false returns
+	 * [CAE => CAE assigned to voucher, CAEFchVto => Expiration
+	 * 	date for CAE (yyyy-mm-dd), voucher_number => Number assigned to
 	 * 	voucher] else returns the complete response (same as in method CreateVoucher)
 	 *  and the voucher_number
 	**/
 	public function CreateNextVoucher($data, $return_response = FALSE)
 	{
 		$last_voucher = $this->GetLastVoucher($data['PtoVta'], $data['CbteTipo']);
-		
+
 		$voucher_number = $last_voucher+1;
 
 		$data['CbteDesde'] = $voucher_number;
 		$data['CbteHasta'] = $voucher_number;
-		
+
 		$res                   = $this->CreateVoucher($data, $return_response);
 		$res['voucher_number'] = $voucher_number;
 
@@ -187,7 +201,7 @@ class ElectronicBilling extends AfipWebService {
 	/**
 	 * Get complete voucher information
 	 *
-	 * Asks to AFIP servers for complete information of voucher {@see WS 
+	 * Asks to AFIP servers for complete information of voucher {@see WS
 	 * Specification item 4.19}
 	 *
 	 * @since 0.7
@@ -196,8 +210,8 @@ class ElectronicBilling extends AfipWebService {
 	 * @param int $sales_point 	Sales point of voucher to get information
 	 * @param int $type 			Type of voucher to get information
 	 *
-	 * @return array|null returns array with complete voucher information 
-	 * 	{@see WS Specification item 4.19} or null if there not exists 
+	 * @return array|null returns array with complete voucher information
+	 * 	{@see WS Specification item 4.19} or null if there not exists
 	**/
 	public function GetVoucherInfo($number, $sales_point, $type)
 	{
@@ -212,7 +226,7 @@ class ElectronicBilling extends AfipWebService {
 		try {
 			$result = $this->ExecuteRequest('FECompConsultar', $req);
 		} catch (Exception $e) {
-			if ($e->getCode() == 602) 
+			if ($e->getCode() == 602)
 				return NULL;
 			else
 				throw $e;
@@ -222,8 +236,8 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Create CAEA 
-	 * 
+	 * Create CAEA
+	 *
 	 * Send a request to AFIP servers  to create a CAEA
 	 *
 	 * @param int $period 		Time period
@@ -240,8 +254,8 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Get CAEA 
-	 * 
+	 * Get CAEA
+	 *
 	 * Ask to AFIP servers for a CAEA information
 	 *
 	 * @param int $period 		Time period
@@ -258,7 +272,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for sales points availables {@see WS 
+	 * Asks to AFIP Servers for sales points availables {@see WS
 	 * Specification item 4.11}
 	 *
 	 * @return array All sales points availables
@@ -281,7 +295,7 @@ class ElectronicBilling extends AfipWebService {
     }
 
 	/**
-	 * Asks to AFIP Servers for voucher types availables {@see WS 
+	 * Asks to AFIP Servers for voucher types availables {@see WS
 	 * Specification item 4.4}
 	 *
 	 * @since 0.7
@@ -294,7 +308,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for voucher concepts availables {@see WS 
+	 * Asks to AFIP Servers for voucher concepts availables {@see WS
 	 * Specification item 4.5}
 	 *
 	 * @since 0.7
@@ -307,7 +321,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for document types availables {@see WS 
+	 * Asks to AFIP Servers for document types availables {@see WS
 	 * Specification item 4.6}
 	 *
 	 * @since 0.7
@@ -320,7 +334,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for aliquot availables {@see WS 
+	 * Asks to AFIP Servers for aliquot availables {@see WS
 	 * Specification item 4.7}
 	 *
 	 * @since 0.7
@@ -333,7 +347,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for currencies availables {@see WS 
+	 * Asks to AFIP Servers for currencies availables {@see WS
 	 * Specification item 4.8}
 	 *
 	 * @since 0.7
@@ -346,7 +360,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for voucher optional data available {@see WS 
+	 * Asks to AFIP Servers for voucher optional data available {@see WS
 	 * Specification item 4.9}
 	 *
 	 * @since 0.7
@@ -359,7 +373,7 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to AFIP Servers for tax availables {@see WS 
+	 * Asks to AFIP Servers for tax availables {@see WS
 	 * Specification item 4.10}
 	 *
 	 * @since 0.7
@@ -372,13 +386,13 @@ class ElectronicBilling extends AfipWebService {
 	}
 
 	/**
-	 * Asks to web service for servers status {@see WS 
+	 * Asks to web service for servers status {@see WS
 	 * Specification item 4.14}
 	 *
 	 * @since 0.7
 	 *
-	 * @return object { AppServer => Web Service status, 
-	 * DbServer => Database status, AuthServer => Autentication 
+	 * @return object { AppServer => Web Service status,
+	 * DbServer => Database status, AuthServer => Autentication
 	 * server status}
 	**/
 	public function GetServerStatus()
@@ -402,19 +416,19 @@ class ElectronicBilling extends AfipWebService {
 
 	/**
 	 * Sends request to AFIP servers
-	 * 
+	 *
 	 * @since 0.7
 	 *
-	 * @param string 	$operation 	SOAP operation to do 
+	 * @param string 	$operation 	SOAP operation to do
 	 * @param array 	$params 	Parameters to send
 	 *
-	 * @return mixed Operation results 
+	 * @return mixed Operation results
 	 **/
 	public function ExecuteRequest($operation, $params = array())
 	{
 		$this->options = array('service' => 'wsfe');
 
-		$params = array_replace($this->GetWSInitialRequest($operation), $params); 
+		$params = array_replace($this->GetWSInitialRequest($operation), $params);
 
 		$results = parent::ExecuteRequest($operation, $params);
 
@@ -425,12 +439,12 @@ class ElectronicBilling extends AfipWebService {
 
 	/**
 	 * Make default request parameters for most of the operations
-	 * 
+	 *
 	 * @since 0.7
 	 *
-	 * @param string $operation SOAP Operation to do 
+	 * @param string $operation SOAP Operation to do
 	 *
-	 * @return array Request parameters  
+	 * @return array Request parameters
 	 **/
 	private function GetWSInitialRequest($operation)
 	{
@@ -441,7 +455,7 @@ class ElectronicBilling extends AfipWebService {
 		$ta = $this->afip->GetServiceTA('wsfe');
 
 		return array(
-			'Auth' => array( 
+			'Auth' => array(
 				'Token' => $ta->token,
 				'Sign' 	=> $ta->sign,
 				'Cuit' 	=> $this->afip->CUIT
@@ -451,15 +465,15 @@ class ElectronicBilling extends AfipWebService {
 
 	/**
 	 * Check if occurs an error on Web Service request
-	 * 
+	 *
 	 * @since 0.7
 	 *
-	 * @param string 	$operation 	SOAP operation to check 
+	 * @param string 	$operation 	SOAP operation to check
 	 * @param mixed 	$results 	AFIP response
 	 *
-	 * @throws Exception if exists an error in response 
-	 * 
-	 * @return void 
+	 * @throws Exception if exists an error in response
+	 *
+	 * @return void
 	 **/
 	private function _CheckErrors($operation, $results)
 	{
