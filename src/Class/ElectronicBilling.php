@@ -146,17 +146,21 @@ class ElectronicBilling extends AfipWebService {
             if (is_array($results->FeDetResp->FECAEDetResponse)){
                 foreach ($results->FeDetResp->FECAEDetResponse as $cte) {
                     $resp[] = [
-                        'Nro' 		=> $cte->CbteDesde,
-                        'CAE' 		=> $cte->CAE,
-                        'CAEFchVto' => $this->FormatDate($cte->CAEFchVto),
+                        'Nro' 		    => $cte->CbteDesde,
+                        'CAE' 		    => $cte->CAE,
+                        'CAEFchVto'     => $this->FormatDate($cte->CAEFchVto),
+                        'Observaciones' => !empty($cte->Observaciones) ? $cte->Observaciones : [],
+                        'Errors'        => !empty($results->Errors) ?  $results->Errors : [],
                     ];
                 }
 
             }else{
-                $resp = array(
-                    'Nro' 		=> $results->FeDetResp->FECAEDetResponse->CbteDesde,
-                    'CAE' 		=> $results->FeDetResp->FECAEDetResponse->CAE,
-                    'CAEFchVto' => $this->FormatDate($results->FeDetResp->FECAEDetResponse->CAEFchVto),
+                $resp[] = array(
+                    'Nro' 		    => $results->FeDetResp->FECAEDetResponse->CbteDesde,
+                    'CAE' 		    => $results->FeDetResp->FECAEDetResponse->CAE,
+                    'CAEFchVto'     => $this->FormatDate($results->FeDetResp->FECAEDetResponse->CAEFchVto),
+                    'Observaciones' => !empty($results->FeDetResp->FECAEDetResponse->Observaciones)? $results->FeDetResp->FECAEDetResponse->Observaciones : [],
+                    'Errors'        => !empty($results->Errors) ?  $results->Errors : [],
                 );
             }
 			return $resp;
