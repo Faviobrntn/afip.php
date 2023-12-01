@@ -293,7 +293,7 @@ class ElectronicBilling extends AfipWebService {
      *
      * @return int
      */
-    public function GetBulkLimit(): int
+    public function GetBulkLimit()
     {
         return $this->ExecuteRequest('FECompTotXRequest')->RegXReq;
     }
