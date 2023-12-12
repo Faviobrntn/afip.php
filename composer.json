@@ -16,5 +16,6 @@
     ],
     "autoload": {
         "files": [ "src/Afip.php" ]
-    }
+    },
+    "minimum-stability": "stable"
 }
